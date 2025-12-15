@@ -1,0 +1,377 @@
+version: '3.8'
+
+services:
+  # ==================== DATABASES ====================
+  postgres-users:
+    image: postgres:16-alpine
+    container_name: atlas-postgres-users
+    environment:
+      POSTGRES_DB: atlas_users
+      POSTGRES_USER: atlas
+      POSTGRES_PASSWORD: atlas123
+    volumes:
+      - postgres_users_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U atlas -d atlas_users" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - atlas-network
+
+  postgres-products:
+    image: postgres:16-alpine
+    container_name: atlas-postgres-products
+    environment:
+      POSTGRES_DB: atlas_products
+      POSTGRES_USER: atlas
+      POSTGRES_PASSWORD: atlas123
+    volumes:
+      - postgres_products_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U atlas -d atlas_products" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - atlas-network
+
+  postgres-orders:
+    image: postgres:16-alpine
+    container_name: atlas-postgres-orders
+    environment:
+      POSTGRES_DB: atlas_orders
+      POSTGRES_USER: atlas
+      POSTGRES_PASSWORD: atlas123
+    volumes:
+      - postgres_orders_data:/var/lib/postgresql/data
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U atlas -d atlas_orders" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - atlas-network
+
+  postgres-payments:
+    image: postgres:16-alpine
+    container_name: atlas-postgres-payments
+    environment:
+      POSTGRES_DB: atlas_payments
+      POSTGRES_USER: atlas
+      POSTGRES_PASSWORD: atlas123
+    volumes:
+      - postgres_payments_data:/var/lib/postgresql/data
+    ports:
+      - "5436:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U atlas -d atlas_payments" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - atlas-network
+
+  # ==================== CACHE & MESSAGING ====================
+  redis:
+    image: redis:7-alpine
+    container_name: atlas-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - atlas-network
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: atlas-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - atlas-network
+
+  # ==================== OBSERVABILITY ====================
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: atlas-zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - atlas-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: atlas-prometheus
+    volumes:
+      - ./infrastructure/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9090:9090"
+    networks:
+      - atlas-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: atlas-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infrastructure/monitoring/grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - atlas-network
+
+  # ==================== INFRASTRUCTURE SERVICES ====================
+  eureka-server:
+    build:
+      context: ./infrastructure/eureka-server
+      dockerfile: Dockerfile
+    container_name: atlas-eureka
+    environment:
+      EUREKA_USER: admin
+      EUREKA_PASSWORD: admin123
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8761/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    networks:
+      - atlas-network
+
+  config-server:
+    build:
+      context: ./infrastructure/config-server
+      dockerfile: Dockerfile
+    container_name: atlas-config
+    environment:
+      EUREKA_HOST: eureka-server
+      EUREKA_USER: admin
+      EUREKA_PASSWORD: admin123
+      CONFIG_USER: config
+      CONFIG_PASSWORD: config123
+    ports:
+      - "8888:8888"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8888/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    networks:
+      - atlas-network
+
+  api-gateway:
+    build:
+      context: ./infrastructure/api-gateway
+      dockerfile: Dockerfile
+    container_name: atlas-gateway
+    environment:
+      EUREKA_HOST: eureka-server
+      EUREKA_USER: admin
+      EUREKA_PASSWORD: admin123
+      CONFIG_HOST: config-server
+      REDIS_HOST: redis
+      JWT_SECRET: atlas-super-secret-key-that-is-at-least-256-bits-long-for-hs256-algorithm
+    ports:
+      - "8080:8080"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8080/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    networks:
+      - atlas-network
+
+  # ==================== APPLICATION SERVICES ====================
+  user-service:
+    build:
+      context: ./services/user-service
+      dockerfile: Dockerfile
+    container_name: atlas-user-service
+    environment:
+      EUREKA_HOST: eureka-server
+      EUREKA_USER: admin
+      EUREKA_PASSWORD: admin123
+      CONFIG_HOST: config-server
+      POSTGRES_HOST: postgres-users
+      POSTGRES_USER: atlas
+      POSTGRES_PASSWORD: atlas123
+      RABBITMQ_HOST: rabbitmq
+      JWT_SECRET: atlas-super-secret-key-that-is-at-least-256-bits-long-for-hs256-algorithm
+    ports:
+      - "8081:8081"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      postgres-users:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - atlas-network
+
+  product-service:
+    build:
+      context: ./services/product-service
+      dockerfile: Dockerfile
+    container_name: atlas-product-service
+    environment:
+      EUREKA_HOST: eureka-server
+      EUREKA_USER: admin
+      EUREKA_PASSWORD: admin123
+      CONFIG_HOST: config-server
+      POSTGRES_HOST: postgres-products
+      POSTGRES_USER: atlas
+      POSTGRES_PASSWORD: atlas123
+      REDIS_HOST: redis
+      RABBITMQ_HOST: rabbitmq
+    ports:
+      - "8082:8082"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      postgres-products:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - atlas-network
+
+  order-service:
+    build:
+      context: ./services/order-service
+      dockerfile: Dockerfile
+    container_name: atlas-order-service
+    environment:
+      EUREKA_HOST: eureka-server
+      EUREKA_USER: admin
+      EUREKA_PASSWORD: admin123
+      CONFIG_HOST: config-server
+      POSTGRES_HOST: postgres-orders
+      POSTGRES_USER: atlas
+      POSTGRES_PASSWORD: atlas123
+      RABBITMQ_HOST: rabbitmq
+    ports:
+      - "8083:8083"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      postgres-orders:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      product-service:
+        condition: service_started
+    networks:
+      - atlas-network
+
+  payment-service:
+    build:
+      context: ./services/payment-service
+      dockerfile: Dockerfile
+    container_name: atlas-payment-service
+    environment:
+      EUREKA_HOST: eureka-server
+      EUREKA_USER: admin
+      EUREKA_PASSWORD: admin123
+      CONFIG_HOST: config-server
+      POSTGRES_HOST: postgres-payments
+      POSTGRES_USER: atlas
+      POSTGRES_PASSWORD: atlas123
+      RABBITMQ_HOST: rabbitmq
+    ports:
+      - "8084:8084"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      postgres-payments:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - atlas-network
+
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    container_name: atlas-notification-service
+    environment:
+      EUREKA_HOST: eureka-server
+      EUREKA_USER: admin
+      EUREKA_PASSWORD: admin123
+      CONFIG_HOST: config-server
+      RABBITMQ_HOST: rabbitmq
+      EMAIL_ENABLED: "false"
+    ports:
+      - "8085:8085"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - atlas-network
+
+# ==================== VOLUMES ====================
+volumes:
+  postgres_users_data:
+  postgres_products_data:
+  postgres_orders_data:
+  postgres_payments_data:
+  redis_data:
+  rabbitmq_data:
+  prometheus_data:
+  grafana_data:
+
+    # ==================== NETWORKS ====================
+networks:
+  atlas-network:
+    driver: bridge
