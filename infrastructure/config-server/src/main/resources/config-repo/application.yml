@@ -1,0 +1,128 @@
+# Common configuration for all Atlas services
+# This file is loaded by all services that connect to config server
+
+# Spring configuration
+spring:
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+      indent-output: true
+    deserialization:
+      fail-on-unknown-properties: false
+    default-property-inclusion: non_null
+
+# Eureka client configuration
+eureka:
+  client:
+    service-url:
+      defaultZone: http://${EUREKA_USER:admin}:${EUREKA_PASSWORD:admin123}@${EUREKA_HOST:localhost}:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+    registry-fetch-interval-seconds: 10
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+    metadata-map:
+      zone: primary
+
+# Management endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+  health:
+    circuitbreakers:
+      enabled: true
+    ratelimiters:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+
+# Logging configuration
+logging:
+  level:
+    root: INFO
+    com.atlas: DEBUG
+    org.springframework.cloud: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Resilience4j defaults
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        register-health-indicator: true
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        wait-duration-in-open-state: 10s
+        failure-rate-threshold: 50
+        event-consumer-buffer-size: 10
+  retry:
+    configs:
+      default:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+  ratelimiter:
+    configs:
+      default:
+        register-health-indicator: true
+        limit-for-period: 100
+        limit-refresh-period: 1s
+        timeout-duration: 0s
+
+# Distributed tracing
+spring.zipkin:
+  base-url: http://${ZIPKIN_HOST:localhost}:9411
+  enabled: ${TRACING_ENABLED:true}
+
+# Cache defaults
+spring.cache:
+  type: redis
+  redis:
+    time-to-live: 900000
+    cache-null-values: false
+
+# Redis defaults
+spring.data.redis:
+  host: ${REDIS_HOST:localhost}
+  port: 6379
+  password: ${REDIS_PASSWORD:}
+  timeout: 2000ms
+  lettuce:
+    pool:
+      max-active: 8
+      max-idle: 8
+      min-idle: 2
+      max-wait: -1ms
+
+# RabbitMQ defaults
+spring.rabbitmq:
+  host: ${RABBITMQ_HOST:localhost}
+  port: 5672
+  username: ${RABBITMQ_USER:guest}
+  password: ${RABBITMQ_PASSWORD:guest}
+  virtual-host: /
+  listener:
+    simple:
+      prefetch: 10
+      default-requeue-rejected: false
+      retry:
+        enabled: true
+        initial-interval: 1000ms
+        max-attempts: 3
+        multiplier: 2.0

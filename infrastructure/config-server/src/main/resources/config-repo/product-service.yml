@@ -1,0 +1,30 @@
+# Product Service Configuration
+server:
+  port: 8082
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:5432/atlas_products
+    username: ${POSTGRES_USER:atlas}
+    password: ${POSTGRES_PASSWORD:atlas123}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 15
+      minimum-idle: 5
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+# Cache configuration for products
+spring.cache:
+  cache-names: products,categories,inventory
+  redis:
+    time-to-live: 900000  # 15 minutes
+
+# Swagger/OpenAPI
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html

@@ -1,0 +1,33 @@
+# Payment Service Configuration
+server:
+  port: 8084
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:5432/atlas_payments
+    username: ${POSTGRES_USER:atlas}
+    password: ${POSTGRES_PASSWORD:atlas123}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+# Payment configuration
+atlas:
+  payment:
+    gateway:
+      type: simulated  # simulated, stripe, paypal
+      timeout: 30000
+    retry-attempts: 3
+    idempotency-key-ttl: 86400000  # 24 hours
+
+# Swagger/OpenAPI
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
