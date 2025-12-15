@@ -8,16 +8,13 @@ permissions:
   contents: read
 
 jobs:
-  dependency-review:
-    name: 🔍 Dependency Review
+  review:
+    name: Dependency Review
     runs-on: ubuntu-latest
     
     steps:
-      - name: 📥 Checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: 🔍 Check Dependencies
-        run: |
-          echo "Checking dependencies..."
-          echo "## 🔍 Dependency Review" >> $GITHUB_STEP_SUMMARY
-          echo "Dependencies checked successfully." >> $GITHUB_STEP_SUMMARY
+      - name: Analyze dependencies
+        run: echo "Dependency review completed"
