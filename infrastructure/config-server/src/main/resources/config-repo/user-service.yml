@@ -1,0 +1,39 @@
+# User Service Configuration
+server:
+  port: 8081
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:5432/atlas_users
+    username: ${POSTGRES_USER:atlas}
+    password: ${POSTGRES_PASSWORD:atlas123}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+# JWT Configuration
+atlas:
+  jwt:
+    secret: ${JWT_SECRET:atlas-super-secret-key-that-is-at-least-256-bits-long-for-hs256-algorithm}
+    expiration: 86400000  # 24 hours
+    refresh-expiration: 604800000  # 7 days
+
+# Swagger/OpenAPI
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha

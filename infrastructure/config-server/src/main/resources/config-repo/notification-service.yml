@@ -1,0 +1,37 @@
+# Notification Service Configuration
+server:
+  port: 8085
+
+spring:
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+        connection-timeout: 5000
+        timeout: 5000
+        write-timeout: 5000
+
+# Notification configuration
+atlas:
+  notification:
+    email:
+      from: ${MAIL_FROM:noreply@atlas-commerce.com}
+      enabled: ${EMAIL_ENABLED:false}
+    sms:
+      enabled: ${SMS_ENABLED:false}
+    templates:
+      location: classpath:/templates/
+
+# Swagger/OpenAPI
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
