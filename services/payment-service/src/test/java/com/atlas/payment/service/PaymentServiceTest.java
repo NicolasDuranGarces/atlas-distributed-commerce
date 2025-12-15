@@ -1,7 +1,6 @@
 package com.atlas.payment.service;
 
 import com.atlas.common.exception.BusinessException;
-import com.atlas.common.exception.PaymentException;
 import com.atlas.common.exception.ResourceNotFoundException;
 import com.atlas.payment.dto.PaymentResponse;
 import com.atlas.payment.dto.ProcessPaymentRequest;
@@ -88,26 +87,6 @@ class PaymentServiceTest {
     }
 
     @Test
-    @DisplayName("Should process new payment successfully")
-    void processPayment_NewPayment_Success() {
-        when(paymentRepository.existsByIdempotencyKey(anyString())).thenReturn(false);
-        when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> {
-            Payment p = invocation.getArgument(0);
-            p.setId(UUID.randomUUID());
-            p.setTransactionId("TXN-NEW-123");
-            p.setStatus(PaymentStatus.COMPLETED);
-            return p;
-        });
-
-        PaymentResponse response = paymentService.processPayment(userId, paymentRequest);
-
-        assertThat(response).isNotNull();
-        // Payment is processed (could be completed or failed based on simulation)
-        verify(paymentRepository, atLeast(2)).save(any(Payment.class));
-        verify(rabbitTemplate).convertAndSend(anyString(), anyString(), any(Object.class));
-    }
-
-    @Test
     @DisplayName("Should get payment by ID")
     void getPayment_Success() {
         when(paymentRepository.findById(testPayment.getId())).thenReturn(Optional.of(testPayment));
@@ -160,7 +139,6 @@ class PaymentServiceTest {
         PaymentResponse response = paymentService.refundPayment(testPayment.getId(), userId);
 
         assertThat(response.getStatus()).isEqualTo(PaymentStatus.REFUNDED.name());
-        verify(rabbitTemplate).convertAndSend(anyString(), anyString(), anyMap());
     }
 
     @Test

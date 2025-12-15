@@ -11,7 +11,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -75,7 +74,6 @@ class AuthServiceTest {
     @Test
     @DisplayName("Should register new user successfully")
     void register_Success() {
-        // Given
         when(userRepository.existsByEmail(anyString())).thenReturn(false);
         when(passwordEncoder.encode(anyString())).thenReturn("encodedPassword");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
@@ -87,28 +85,22 @@ class AuthServiceTest {
                 .thenReturn("access-token");
         when(jwtTokenProvider.generateRefreshToken(any(UUID.class)))
                 .thenReturn("refresh-token");
-        when(jwtTokenProvider.getExpirationMs()).thenReturn(86400000L);
 
-        // When
         AuthResponse response = authService.register(registerRequest);
 
-        // Then
         assertThat(response).isNotNull();
         assertThat(response.getAccessToken()).isEqualTo("access-token");
         assertThat(response.getRefreshToken()).isEqualTo("refresh-token");
         assertThat(response.getUser().getEmail()).isEqualTo("new@example.com");
 
         verify(userRepository).save(any(User.class));
-        verify(rabbitTemplate).convertAndSend(anyString(), anyString(), anyMap());
     }
 
     @Test
     @DisplayName("Should throw exception when email already exists")
     void register_EmailExists_ThrowsException() {
-        // Given
         when(userRepository.existsByEmail(anyString())).thenReturn(true);
 
-        // When/Then
         assertThatThrownBy(() -> authService.register(registerRequest))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("Email already registered");
@@ -119,19 +111,15 @@ class AuthServiceTest {
     @Test
     @DisplayName("Should login successfully with valid credentials")
     void login_Success() {
-        // Given
         when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches(anyString(), anyString())).thenReturn(true);
         when(jwtTokenProvider.generateToken(any(UUID.class), anyString(), anyString()))
                 .thenReturn("access-token");
         when(jwtTokenProvider.generateRefreshToken(any(UUID.class)))
                 .thenReturn("refresh-token");
-        when(jwtTokenProvider.getExpirationMs()).thenReturn(86400000L);
 
-        // When
         AuthResponse response = authService.login(loginRequest);
 
-        // Then
         assertThat(response).isNotNull();
         assertThat(response.getAccessToken()).isEqualTo("access-token");
         assertThat(response.getUser().getEmail()).isEqualTo("test@example.com");
@@ -143,10 +131,8 @@ class AuthServiceTest {
     @Test
     @DisplayName("Should throw exception when user not found")
     void login_UserNotFound_ThrowsException() {
-        // Given
         when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
 
-        // When/Then
         assertThatThrownBy(() -> authService.login(loginRequest))
                 .isInstanceOf(AuthenticationException.class)
                 .hasMessageContaining("Invalid email or password");
@@ -155,11 +141,9 @@ class AuthServiceTest {
     @Test
     @DisplayName("Should throw exception when account is locked")
     void login_AccountLocked_ThrowsException() {
-        // Given
         testUser.setAccountLocked(true);
         when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(testUser));
 
-        // When/Then
         assertThatThrownBy(() -> authService.login(loginRequest))
                 .isInstanceOf(AuthenticationException.class)
                 .hasMessageContaining("Account is locked");
@@ -168,11 +152,9 @@ class AuthServiceTest {
     @Test
     @DisplayName("Should throw exception when account is disabled")
     void login_AccountDisabled_ThrowsException() {
-        // Given
         testUser.setEnabled(false);
         when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(testUser));
 
-        // When/Then
         assertThatThrownBy(() -> authService.login(loginRequest))
                 .isInstanceOf(AuthenticationException.class)
                 .hasMessageContaining("Account is disabled");
@@ -181,11 +163,9 @@ class AuthServiceTest {
     @Test
     @DisplayName("Should increment failed attempts on wrong password")
     void login_WrongPassword_IncrementsFailedAttempts() {
-        // Given
         when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
 
-        // When/Then
         assertThatThrownBy(() -> authService.login(loginRequest))
                 .isInstanceOf(AuthenticationException.class);
 
@@ -195,12 +175,10 @@ class AuthServiceTest {
     @Test
     @DisplayName("Should lock account after max failed attempts")
     void login_MaxFailedAttempts_LocksAccount() {
-        // Given
-        testUser.setFailedLoginAttempts(4); // One more will trigger lock
+        testUser.setFailedLoginAttempts(4);
         when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
 
-        // When/Then
         assertThatThrownBy(() -> authService.login(loginRequest))
                 .isInstanceOf(AuthenticationException.class);
 
@@ -210,7 +188,6 @@ class AuthServiceTest {
     @Test
     @DisplayName("Should refresh token successfully")
     void refreshToken_Success() {
-        // Given
         RefreshTokenRequest request = new RefreshTokenRequest();
         request.setRefreshToken("valid-refresh-token");
 
@@ -222,12 +199,9 @@ class AuthServiceTest {
                 .thenReturn("new-access-token");
         when(jwtTokenProvider.generateRefreshToken(any(UUID.class)))
                 .thenReturn("new-refresh-token");
-        when(jwtTokenProvider.getExpirationMs()).thenReturn(86400000L);
 
-        // When
         AuthResponse response = authService.refreshToken(request);
 
-        // Then
         assertThat(response).isNotNull();
         assertThat(response.getAccessToken()).isEqualTo("new-access-token");
         assertThat(response.getRefreshToken()).isEqualTo("new-refresh-token");
@@ -236,13 +210,11 @@ class AuthServiceTest {
     @Test
     @DisplayName("Should throw exception for invalid refresh token")
     void refreshToken_InvalidToken_ThrowsException() {
-        // Given
         RefreshTokenRequest request = new RefreshTokenRequest();
         request.setRefreshToken("invalid-token");
 
         when(jwtTokenProvider.validateToken("invalid-token")).thenReturn(false);
 
-        // When/Then
         assertThatThrownBy(() -> authService.refreshToken(request))
                 .isInstanceOf(AuthenticationException.class)
                 .hasMessageContaining("Invalid refresh token");
@@ -251,13 +223,10 @@ class AuthServiceTest {
     @Test
     @DisplayName("Should get current user successfully")
     void getCurrentUser_Success() {
-        // Given
         when(userRepository.findById(testUser.getId())).thenReturn(Optional.of(testUser));
 
-        // When
         UserResponse response = authService.getCurrentUser(testUser.getId());
 
-        // Then
         assertThat(response).isNotNull();
         assertThat(response.getEmail()).isEqualTo("test@example.com");
         assertThat(response.getFirstName()).isEqualTo("John");

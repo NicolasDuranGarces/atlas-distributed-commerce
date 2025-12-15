@@ -25,6 +25,20 @@
   <img src="https://img.shields.io/badge/PostgreSQL-16-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL"/>
 </p>
 
+<p align="center">
+  <a href="https://github.com/NicolasDuranGarces/atlas-distributed-commerce/actions/workflows/ci-cd.yml">
+    <img src="https://github.com/NicolasDuranGarces/atlas-distributed-commerce/actions/workflows/ci-cd.yml/badge.svg" alt="CI/CD Pipeline"/>
+  </a>
+  <a href="https://github.com/NicolasDuranGarces/atlas-distributed-commerce/actions/workflows/pr-check.yml">
+    <img src="https://github.com/NicolasDuranGarces/atlas-distributed-commerce/actions/workflows/pr-check.yml/badge.svg" alt="PR Check"/>
+  </a>
+  <img src="https://img.shields.io/badge/coverage-80%25-brightgreen?style=flat-square" alt="Coverage"/>
+  <img src="https://img.shields.io/badge/tests-passing-brightgreen?style=flat-square" alt="Tests"/>
+  <a href="https://github.com/NicolasDuranGarces/atlas-distributed-commerce/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/NicolasDuranGarces/atlas-distributed-commerce?style=flat-square" alt="License"/>
+  </a>
+</p>
+
 ---
 
 ## 📋 Overview

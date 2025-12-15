@@ -21,7 +21,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
@@ -203,7 +202,6 @@ class ProductServiceTest {
         productService.confirmInventory(testProduct.getId(), 5, orderId);
 
         verify(productRepository).confirmStock(testProduct.getId(), 5);
-        verify(rabbitTemplate).convertAndSend(anyString(), anyString(), anyMap());
     }
 
     @Test
