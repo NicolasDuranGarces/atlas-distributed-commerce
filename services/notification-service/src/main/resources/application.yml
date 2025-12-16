@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: notification-service
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
   config:
     import: optional:configserver:http://${CONFIG_HOST:localhost}:8888
   mail:
@@ -14,6 +18,11 @@ spring:
     properties:
       mail.smtp.auth: true
       mail.smtp.starttls.enable: true
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: 5672
+    username: guest
+    password: guest
 
 eureka:
   client:
